@@ -422,6 +422,8 @@ export class OnboardingPage extends BasePage {
 
       // Second click - just click and move on
       console.log("=== SECOND NEXT CLICK ===");
+      // Ensure the Next button is in view before clicking
+      await this.nextButton.scrollIntoViewIfNeeded();
       await this.clickNextSafelyV2();
 
       // If we reach here, the page didn't close, so we can continue
@@ -432,6 +434,8 @@ export class OnboardingPage extends BasePage {
 
       // Third click - just click and move on
       console.log("=== THIRD NEXT CLICK ===");
+      // Ensure the Next button is in view before clicking
+      await this.nextButton.scrollIntoViewIfNeeded();
       await this.clickNextSafelyV2();
 
       // If we reach here, the page didn't close, so we can continue
@@ -629,23 +633,93 @@ export class OnboardingPage extends BasePage {
         const nextBtn = this.nextButton;
         if ((await nextBtn.isVisible()) && (await nextBtn.isEnabled())) {
           console.log("Next button is visible and enabled, clicking");
-          await this.page.evaluate(() => window.scrollBy(0, -400)); // scroll up 400px
-          await nextBtn.click({ force: true });
+          // Scroll the actual button into view using Playwright API
+          await nextBtn.scrollIntoViewIfNeeded();
 
-          // Wait for the next step to load
+          // If a tour or overlay is present, try to dismiss it
+          try {
+            if (await this.skipTourButton.isVisible().catch(() => false)) {
+              console.log("Skip tour button found, clicking to dismiss overlay");
+              await this.skipTourButton.click({ force: true }).catch(() => {});
+              await this.page.waitForTimeout(300);
+            }
+          } catch (e) {
+            // ignore
+          }
+
+          // Helper: check if element is occluded by another element
+          const isObscured = await this.page.evaluate((el) => {
+            const rect = (el as HTMLElement).getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            const topEl = document.elementFromPoint(cx, cy);
+            if (!topEl) return false;
+            return !(el === topEl || (topEl as HTMLElement).contains(el));
+          }, await nextBtn.elementHandle());
+
+          if (isObscured) {
+            console.log("Next button appears to be obscured by another element");
+            // Try to remove common overlay elements (dialogs/modals) as a last resort
+            await this.page.evaluate(() => {
+              const overlays = Array.from(document.querySelectorAll('[role="dialog"], .modal, [data-test-id="overlay"], [data-test-id="tour"]'));
+              overlays.forEach(o => (o as HTMLElement).style && ((o as HTMLElement).style.display = 'none'));
+            }).catch(() => {});
+            await this.page.waitForTimeout(200);
+          }
+
+          // Try a normal click first
+          try {
+            await nextBtn.click({ force: false });
+          } catch (e) {
+            // fallback to force click
+            await nextBtn.click({ force: true }).catch(() => {});
+          }
+
+          // If clicking via Playwright didn't move forward, try DOM click as last resort
+          let progressed = false;
           for (let i = 0; i < 5; i++) {
             if (await waitForLocator().isVisible()) {
+              progressed = true;
               console.log("Next step loaded successfully");
               return;
             }
             await this.page.waitForTimeout(300);
-            await nextBtn.click({ force: true });
+          }
+
+          if (!progressed) {
+            // Try direct DOM click
+            try {
+              const handle = await nextBtn.elementHandle();
+              if (handle) {
+                await handle.evaluate((el: HTMLElement) => (el as HTMLElement).click());
+              }
+            } catch (e) {
+              console.log("DOM click also failed", e);
+            }
+
+            // Final check for progress
+            for (let i = 0; i < 5; i++) {
+              if (await waitForLocator().isVisible()) {
+                console.log("Next step loaded successfully after DOM click");
+                return;
+              }
+              await this.page.waitForTimeout(300);
+            }
           }
         }
       } catch (error) {
         console.log("Error clicking Next button, retrying:", error);
       }
       await this.page.waitForTimeout(500);
+    }
+    // Take a diagnostic screenshot to help debugging
+    try {
+      const ts = Date.now();
+      const path = `reports/attachments/next-click-failure-${ts}.png`;
+      await this.page.screenshot({ path, fullPage: true }).catch(() => {});
+      console.error(`Next button click failed; screenshot saved to ${path}`);
+    } catch (e) {
+      // ignore screenshot errors
     }
     throw new Error(
       "Next button not clickable or next step not visible in timeout"
@@ -662,8 +736,26 @@ export class OnboardingPage extends BasePage {
       await nextBtn.waitFor({ state: "visible", timeout: 10000 });
       console.log("Next button found and visible");
 
-      await this.page.evaluate(() => window.scrollBy(0, -400)); // scroll up 400px
-      await nextBtn.click({ force: true });
+      // Scroll the button into view and click
+      await nextBtn.scrollIntoViewIfNeeded();
+
+      // dismiss overlay if present
+      if (await this.skipTourButton.isVisible().catch(() => false)) {
+        await this.skipTourButton.click({ force: true }).catch(() => {});
+        await this.page.waitForTimeout(300);
+      }
+
+      // Try normal click, then force, then DOM click
+      try {
+        await nextBtn.click({ force: false });
+      } catch (e) {
+        try {
+          await nextBtn.click({ force: true });
+        } catch (ee) {
+          const handle = await nextBtn.elementHandle();
+          if (handle) await handle.evaluate((el: HTMLElement) => el.click()).catch(() => {});
+        }
+      }
 
       console.log("Next button clicked successfully");
 
@@ -673,6 +765,13 @@ export class OnboardingPage extends BasePage {
         console.log("Page closed after Next click - this is likely expected");
         return;
       }
+      // capture screenshot for diagnostics
+      try {
+        const ts = Date.now();
+        const path = `reports/attachments/next-clickv2-failure-${ts}.png`;
+        await this.page.screenshot({ path, fullPage: true }).catch(() => {});
+        console.error(`clickNextSafelyV2 failed; screenshot saved to ${path}`);
+      } catch (e) {}
       throw error;
     }
   }
