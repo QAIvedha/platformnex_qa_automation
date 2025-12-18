@@ -11,6 +11,8 @@ let loginPage: LoginPage;
 let dashboardPage: DashboardPage;
 const testData = loadYamlData('src/utils/testData.yaml');
 
+test.use({ storageState: undefined });
+
 test.beforeEach(async ({ page }, testInfo) => {
   mainPage = new MainPage(page);
   loginPage = new LoginPage(page);

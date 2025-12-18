@@ -629,7 +629,7 @@ export class OnboardingPage extends BasePage {
         const nextBtn = this.nextButton;
         if ((await nextBtn.isVisible()) && (await nextBtn.isEnabled())) {
           console.log("Next button is visible and enabled, clicking");
-          await nextBtn.scrollIntoViewIfNeeded();
+          await this.page.evaluate(() => window.scrollBy(0, -400)); // scroll up 400px
           await nextBtn.click({ force: true });
 
           // Wait for the next step to load
@@ -662,7 +662,7 @@ export class OnboardingPage extends BasePage {
       await nextBtn.waitFor({ state: "visible", timeout: 10000 });
       console.log("Next button found and visible");
 
-      await nextBtn.scrollIntoViewIfNeeded();
+      await this.page.evaluate(() => window.scrollBy(0, -400)); // scroll up 400px
       await nextBtn.click({ force: true });
 
       console.log("Next button clicked successfully");

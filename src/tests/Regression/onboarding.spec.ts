@@ -86,7 +86,7 @@ test.beforeEach(async ({ page }: { page: Page }, testInfo: TestInfo) => {
   testInfo.setTimeout(testInfo.timeout + 30_000);
 
   // Precondition: Login
-  await loginAsUser(page, email, password);
+  await mainPage.navigateToHomePage();
   await mainPage.navigateToApplication();
 
   // Temporary navigation

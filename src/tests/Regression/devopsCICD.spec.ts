@@ -53,7 +53,7 @@ test.beforeEach(async ({ page }, testInfo) => {
   testInfo.setTimeout(testInfo.timeout + 30_000);
 
   // Precondition: Login
-  await loginAsUser(page, email, password);
+//  await loginAsUser(page, email, password);
   await mainPage.navigateToApplication();
 });
 

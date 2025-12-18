@@ -7,6 +7,9 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   timeout: 30000,
   retries: process.env.CI ? 2 : 0,
+
+  globalSetup: './src/tests/setup/global.setup.ts',
+
   reporter: [
     ['list'], // keep console output
     ['monocart-reporter', {
@@ -22,5 +25,6 @@ export default defineConfig({
     baseURL: 'https://platformnex-v2-frontend-qa1-pyzx2jrmda-uc.a.run.app', // Base URL for your application
     screenshot: 'on',
     video: 'retain-on-failure',
+    storageState: 'storage/storageState.json',
   },
 });

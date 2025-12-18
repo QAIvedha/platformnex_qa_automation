@@ -55,9 +55,6 @@ test.beforeEach(async ({ page }, testInfo) => {
 
   testInfo.setTimeout(testInfo.timeout + 30_000);
 
-  // --- Precondition: Login ---
-  await loginAsUser(page, email, password);
-
   // --- Precondition: Navigate directly to application ---
   await page.goto(
     "https://platformnex-v2-frontend-qa1-pyzx2jrmda-uc.a.run.app/applications/Regression-test"
