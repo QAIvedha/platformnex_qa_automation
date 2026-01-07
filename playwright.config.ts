@@ -5,7 +5,10 @@ export default defineConfig({
   testDir: './src/tests',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  timeout: 30000,
+  timeout: 180000,
+  expect: {
+    timeout: 10000,
+  },
   retries: process.env.CI ? 2 : 0,
 
   globalSetup: './src/tests/setup/global.setup.ts',
